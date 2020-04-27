@@ -27,7 +27,7 @@ Let's review in detail:
 
 ### Atoms
 
-Any letter is considered an an atom. Atoms can be only one letter long and must be divided by operators.
+Any letter is considered as an atom. Atoms can be only one letter long and must be divided by operators.
 
 ### Literals
 
