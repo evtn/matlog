@@ -98,6 +98,9 @@ class Atom(Token):
             return Literal(context[self.identifier])
         return self
 
+    def copy(self):
+        return Atom(self.identifier)
+
 
 class Literal(Token):
     """Literal token - literal value (0 or 1)."""
@@ -109,6 +112,9 @@ class Literal(Token):
     
     def solve(self, context: Dict[str, Value]) -> "Literal":
         return self
+
+    def copy(self):
+        return Literal(self.value)
 
 
 class Operator(Token):
@@ -144,6 +150,9 @@ class Operator(Token):
 
     def func(self, *args):
         return self.operators[self.identifier](*args)
+
+    def copy(self):
+        return Operator(self.identifier)
 
 
 class Expression(Token):
@@ -210,15 +219,18 @@ class Expression(Token):
 
     def __eq__(self, other: Token) -> bool:
         if self.same(other):
-            return True
+            return [Token.TRUE]
         if other.type != "expr":
             other = Expression([other])
 
         letters = [*(self.atoms() | other.atoms())]
         for dataset in combinations(letters):
             if self.solve(dataset).identifier != other.solve(dataset).identifier:
-                return False
-        return True
+                return [Token.FALSE]
+        return [Token.TRUE]
+
+    def equals(self, other: Token) -> bool:
+        return (self == other)[0].value
 
     def atoms(self) -> List[str]:
         letters = set()
@@ -236,6 +248,18 @@ class Expression(Token):
 
     def __repr__(self):
         return ''.join(["Token.EXPR[", " ".join(map(lambda x: repr(x), self.tokens)), "]"])
+
+    def copy(self):
+        return Expression(self.tokens)
+
+    def deep_copy(self):
+        tokens = []
+        for token in self.tokens:
+            if token.type == "expr":
+                tokens.append(token.deep_copy())
+            else:
+                tokens.append(token.copy())
+        return Expression(tokens)
 
 
 Token.TRUE = Literal(1)
