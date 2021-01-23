@@ -5,8 +5,9 @@ Basic usage:
 from matlog import Expression
 
 expr = Expression("A & B")
-print(expr.calc(A=1, B=0)) # False
-print(expr.table()) # prints the truth table of expression
+print(expr.solve(A=1, B=0)) # False
+print(expr.solve(B=0)) # False
+print(expr.table()) # prints the truth table of expression [unavailable as of 2.0pre3]
 ```
 
 ## Contents
@@ -21,7 +22,7 @@ print(expr.table()) # prints the truth table of expression
 ## Expression string
 An expression string is a bunch of tokens (atoms, expressions, operators and literals) in a specific order.
 There's a big example of expression string:    
-`a | (b -> c) <-> (~a ^ 1) <- ~z`
+`a | (b -> c) == (~a ^ 1) <- ~z`
 
 Let's review in detail:    
 
@@ -44,19 +45,20 @@ Any expression can contain nested expression strings in brackets. Nested express
 + **&** (and / conjunction): **True** if (and only if) both operands are **True**
 + **|** (or / disjunction): **True** if (and only if) any operand is **True**.
 + **->** (implication): **False** if (and only if) the left operand is **True** but the right is **False**
-+ **<->** (equality / biconditional): **True** if (and only if) operands are equal to each other
++ **==** (equality / biconditional): **True** if (and only if) operands are equal to each other
 + **^** (xor / exclusive disjunction): **False** if (and only if) operands are equal to each other
-+ **<-** (converse implication): **False** if (and only if) the the right operand is **False** but left operand is **True**
++ **<-** (converse implication): **->** with reversed operands order
 
 ## Expression
 
 Expression class is the main class of the module.
 There are three ways to create an Expression object:
 + from an [expression string](#expression-string): `Expression(expr_str)`
-+ copying an existing Expression object (it's not a deep copy): `expr.copy()`
-+ constructing an Expression from tokens (**module won't check if it is valid in this case**): `Expression.from_tokens([token1, token2...])`
++ copying an existing Expression: `expr.copy()` (same as `Expression(expr.tokens)`)
++ deep-copying an existing Expression object: `expr.deep_copy()`
++ constructing an Expression from tokens (**module won't check if it is valid in this case**): `Expression([token1, token2...])`
 
-### Truth tables
+### Truth tables [unavailable as of 2.0pre3]
 
 You can use `.table(keep=None)` method to build a truth table for an Expression object.
 `keep` parameter can be either `1` or `0` (to filter rows with corresponding values) or `None` if you need a full table
@@ -64,22 +66,38 @@ If expression is always True or always False, table() would return a string `Exp
 
 ### Evaluating expression
 
-If you need a value for a specific set of values, you can use `.calc()` method like this:
+If you need a value for a specific set of values, you can use `.solve()` method like this:
 
 ```python
 from matlog import Expression
 expr = Expression("A & B | C")
-print(expr.calc(A=1, B=0, C=1)) # prints True
+print(expr.solve(A=1, B=0, C=1)) # prints (1)
+print(expr.solve({"A": 1, "B": 0, "C": 1})) # you can pass a dictionary too
+```
+
+if you need a result value (release version would provide more convenient ways, of course):
+
+```python
+
+result = expr.solve(A=1, B=0, C=1)
+if len(result.tokens) == 1:
+    token = result.unwrap(full_unwrap=True)
+    if token.type == "literal":
+        print(token.value) # there
+    else:
+        print("Expression isn't solved!")
+else:
+    print("Expression isn't solved!")
 ```
 
 ### Partial evaluation
 
-If you know some (but not all) values, you can also use `.calc()`, providing some values:
+If you know some (but not all) values, you can also use `.solve()`, providing some values:
 
 ```python
 from matlog import Expression
 expr = Expression("A & B | C")
-print(expr.calc(B=0)) # Token.atom(C)
+print(expr.calc(B=0)) # prints (C)
 ```
 
 In some cases, this could be evaluated to one token or one literal.    
@@ -91,20 +109,18 @@ expr = Expression("A & B | C")
 print(expr.calc(B=0, return_expr=True)) # Expr[C] (Actually an Expression object with one token - Token("C"))
 ```
 
-### are_equal
+### Equality check
 
-If you're wondering if two expressions are equal (producing the same results with any set of values), you can use `are_equal()` function    
-(or just `==` operator on two Expression objects):
+If you're wondering if expressions are equal (producing the same results with any set of values), you can use `Expression.equals()` method:
 
 ```python
 from matlog import Expression, are_equal
-expr1 = Expression("A & (A | B)")
-expr2 = Expression("A & (A | C)")
-print(are_equal(expr1, expr2)) # True
-print(expr1 == expr2) # True
+expr1 = Expression("A & B")
+expr2 = Expression("B & A")
+print(expr1.equals(expr2)) # True
 ```
 
-### proposition
+### proposition [unavailable as of 2.0pre3]
 
 Module can solve propositions:
 ```
