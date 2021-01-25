@@ -69,7 +69,7 @@ class Token:
         if other.type == "literal":
             if other.value:
                 return -self
-            return [self]
+            return self
         return Expression([self, Operator("^"), other], explicit=False)
 
     def __neg__(self) -> "Token":
@@ -80,6 +80,14 @@ class Token:
     def __eq__(self, other) -> "Token":
         if self.same(other):
             return Token.TRUE
+        if self.type == "literal":
+            if self.value:
+                return other
+            return -other
+        if other.type == "literal":
+            if other.value:
+                return self
+            return -self
         if self.type != "expr" and other.type == "expr":
             return Literal(other == self)
         return Expression([self, Operator("=="), other], explicit=False)
@@ -345,7 +353,13 @@ class Expression(Token):
         return Expression([Operator("~"), self], explicit=False)
 
     def __repr__(self) -> str:
-        return ''.join(["Token.EXPR[", " ".join(map(lambda x: repr(x), self.tokens)), "]"])
+        identifier = "\n  ".join(
+            map(
+                lambda x: "\n  ".join(repr(x).split("\n")),
+                self.tokens
+            )
+        )
+        return f"Token.{['GROUP', 'EXPR'][self.explicit]}[\n  {identifier}\n]"
 
     def copy(self) -> "Expression":
         """Makes a shallow copy of Expression"""     
