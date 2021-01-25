@@ -58,11 +58,10 @@ There are three ways to create an Expression object:
 + deep-copying an existing Expression object: `expr.deep_copy()`
 + constructing an Expression from tokens (**module won't check if it is valid in this case**): `Expression([token1, token2...])`
 
-### Truth tables [unavailable as of 2.0pre3]
+### Truth tables 
 
 You can use `.table(keep=None)` method to build a truth table for an Expression object.
-`keep` parameter can be either `1` or `0` (to filter rows with corresponding values) or `None` if you need a full table
-If expression is always True or always False, table() would return a string `Expression %expr% is always %value%`
+`keep` parameter can be either `1` or `0` (to filter rows with corresponding values) or `None` if you need a full table    
 
 ### Evaluating expression
 
@@ -78,16 +77,7 @@ print(expr.solve({"A": 1, "B": 0, "C": 1})) # you can pass a dictionary too
 if you need a result value (release version would provide more convenient ways, of course):
 
 ```python
-
-result = expr.solve(A=1, B=0, C=1)
-if len(result.tokens) == 1:
-    token = result.unwrap(full_unwrap=True)
-    if token.type == "literal":
-        print(token.value) # there
-    else:
-        print("Expression isn't solved!")
-else:
-    print("Expression isn't solved!")
+expr.value(A=1, B=0, C=1) # 1 (raises an exception if there's not enough data to solve expression)
 ```
 
 ### Partial evaluation
@@ -97,17 +87,9 @@ If you know some (but not all) values, you can also use `.solve()`, providing so
 ```python
 from matlog import Expression
 expr = Expression("A & B | C")
-print(expr.calc(B=0)) # prints (C)
-```
-
-In some cases, this could be evaluated to one token or one literal.    
-If you always need an expression as a result, you can provide `return_expr=True` parameter to `.calc()`:
-
-```python
-from matlog import Expression
-expr = Expression("A & B | C")
-print(expr.calc(B=0, return_expr=True)) # Expr[C] (Actually an Expression object with one token - Token("C"))
-```
+print(expr.solve(B=0)) # prints (C)
+print(expr.solve({"B": 0})) # prints (C) too
+``` 
 
 ### Equality check
 
