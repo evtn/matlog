@@ -10,7 +10,7 @@ class Token:
     type = "unknown"
     identifier = "None"
 
-    def same(self, other):
+    def same(self, other: "Token") -> bool:
         """tries to say if two instances of Token are equal"""
         if self.identifier.strip("()") == other.identifier.strip("()"):
             return True
