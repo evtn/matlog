@@ -12,6 +12,11 @@ print(expr.solve(B=0)) # False
 print(expr.table()) # prints the truth table of expression
 ```
 
+## Installation
+
+Simply use `pip install matlog` or clone repo and launch `setup.py`
+
+
 ## Contents
 + [Expression string](#expression-string)
 + [Using Expression object](#expression)
