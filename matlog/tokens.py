@@ -12,9 +12,7 @@ class Token:
 
     def same(self, other: "Token") -> bool:
         """tries to say if two instances of Token are equal"""
-        if self.identifier.strip("()") == other.identifier.strip("()"):
-            return True
-        return False
+        return self.identifier.strip("()") == other.identifier.strip("()")
 
     def __str__(self) -> str:
         return self.identifier
