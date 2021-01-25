@@ -167,15 +167,15 @@ class Operator(Token):
         self.identifier = identifier
 
     def solve(self, context: Dict[str, Value]) -> NoReturn:
-        """raises NotImplementedError as Operator can't be solved"""
+        """Raises NotImplementedError as Operator can't be solved"""
         raise NotImplementedError("Operators can't have a value")
 
     def priority(self) -> int:
-        """returns current operator priority as integer, from 0 [highest] to 3 [lowest]"""
+        """Returns current operator priority as integer, from 0 [highest] to 3 [lowest]"""
         return self.priorities.get(self.identifier, 3)
 
     def func(self, *args) -> Token:
-        """return"""
+        """Returns a token """
         return self.operators[self.identifier](*args)
 
     def copy(self):

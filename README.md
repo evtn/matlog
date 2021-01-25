@@ -1,5 +1,7 @@
 # matlog
 
+**This module is well-documented with docstrings and type hints. Use `help(matlog.tokens)` or your editor hints to get familiar with it.**
+
 Basic usage:    
 ```python
 from matlog import Expression
@@ -7,7 +9,7 @@ from matlog import Expression
 expr = Expression("A & B")
 print(expr.solve(A=1, B=0)) # False
 print(expr.solve(B=0)) # False
-print(expr.table()) # prints the truth table of expression [unavailable as of 2.0pre3]
+print(expr.table()) # prints the truth table of expression
 ```
 
 ## Contents
