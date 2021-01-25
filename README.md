@@ -18,7 +18,7 @@ print(expr.table()) # prints the truth table of expression
   + [Truth tables](#truth-tables)
   + [Evaluating expression](#evaluating-expression)
   + [Partial evaluation](#partial-evaluation)
-  + [are_equal](are_equal)
+  + [Equality check](equality-check)
   + [proposition](proposition)
 
 ## Expression string
