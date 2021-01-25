@@ -30,7 +30,7 @@ setup(
     include_package_data=True,
     python_requires=">=3.6.*",
     license=about['__license__'],
-    download_url="https://github.com/evtn/matlog/archive/v2.0.0.tar.gz",
+    download_url=f"https://github.com/evtn/matlog/archive/v{about['__version__']}.tar.gz",
     zip_safe=False,
     # https://pypi.org/classifiers/
     classifiers=[ 
