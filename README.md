@@ -103,23 +103,3 @@ expr1 = Expression("A & B")
 expr2 = Expression("B & A")
 print(expr1.equals(expr2)) # True
 ```
-
-### proposition [unavailable as of 2.0pre3]
-
-Module can solve propositions:
-```
-Example:
-Premise 1: P → Q 
-Premise 2: P 
-Conclusion: Q 
-```
-Checking that with module:
-```python
-from matlog import Expression, proposition
-
-premise1 = Expression("P -> Q")
-premise2 = Expression("P") # or Token("P")
-conclusion = Expression("Q") # or Token("Q")
-
-proposition(premise1, premise2, conclusion) # True
-```
