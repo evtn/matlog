@@ -260,6 +260,24 @@ class Expression(Token):
             else:
                 tokens.append(token.copy())
         return Expression(tokens)
+    def table(self, keep=None) -> Table:
+        """
+        Returns a truth table for Expression
+
+        :param Optional[bool] keep: optional filter parameter. If specified, only rows with this value would be used.
+        :returns: truth table as utils.Table object (can be printed for a pretty table) 
+
+        """
+        result = []
+        identifier = self.identifier
+        for dataset in self.datasets(sorted(self.atoms())):
+            dataset[identifier] = self.value(dataset)
+            if keep is None or dataset[identifier] == keep:
+                result.append(dataset)
+        return Table({
+            "identifiers": [*sorted(self.atoms()), identifier],
+            "values": result
+        })
 
 
 Token.TRUE = Literal(1)
