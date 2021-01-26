@@ -335,7 +335,7 @@ class Expression(Token):
         Note this is not the same as `self == other`: This function returns a boolean value, while == returns a Literal
         
         """
-        return (self == other)[0].value
+        return (self == other).value
 
     def atoms(self) -> Set[str]:
         """Returns a set of letters representing expression atoms"""
