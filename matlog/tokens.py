@@ -245,6 +245,17 @@ class Expression(Token):
         """
         return Expression(Expression.tokens_from_string(string))
 
+    def forced_solve(self) -> int:
+        """Tries to solve using all letter combinations. If expression evaluates to the same result every time, returns this result, else raises ValueError"""
+        last_result = None
+        for dataset in self.datasets([*self.atoms()]):
+            result = self.value(dataset)
+            if last_result is None:
+                last_result = result
+            if result != last_result:
+                raise ValueError("This expression yields different results with different inputs")
+        return result
+
     def solve(self, context: Optional[Dict[str, Value]] = None, treeset: Optional[set] = None, full_unwrap: bool = False, **kwargs: Value) -> Token:
         """
         
