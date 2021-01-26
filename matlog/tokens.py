@@ -342,7 +342,7 @@ class Expression(Token):
         letters = set()
         for token in self.tokens:
             if token.type == "expr":
-                letters |= token.atoms
+                letters |= token.atoms()
             elif token.type == "atom":
                 letters.add(token.identifier)
         return letters
