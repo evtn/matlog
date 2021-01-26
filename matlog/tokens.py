@@ -14,6 +14,14 @@ class Token:
         """tries to say if two instances of Token are equal"""
         return self.identifier.strip("()") == other.identifier.strip("()")
 
+    def is_inversed(self, other) -> bool:
+        if self.type == other.type == "literal":
+            return bool(abs(self.value - other.value))
+        result = (-self == other).solve({})
+        if result.type != "literal":
+            return False
+        return result.value
+
     def __str__(self) -> str:
         return self.identifier
 
@@ -22,54 +30,63 @@ class Token:
 
     def __and__(self, other) -> "Token":
         if self.same(other):
-            return self
+            return self # (A & A) == A
+        if self.is_inversed(other):
+            return Token.FALSE # (A & ~A) == 0
         if self.type == "literal":
-            if self.value:
+            if self.value: # (1 & B) == B
                 return other
-            return Token.FALSE
+            return Token.FALSE # (0 & B) == B
         if other.type == "literal":
-            if other.value:
+            if other.value: # (A & 1) == A
                 return self
-            return Token.FALSE
+            return Token.FALSE # (A & 0) == A
         return Expression([self, Operator("&"), other], explicit=False)
 
     def __or__(self, other) -> "Token":
         if self.same(other):
-            return self
+            return self # (A | A) == A
+        if self.is_inversed(other):
+            return Token.TRUE # (A | ~A) == 1
         if self.type == "literal":
-            if self.value:
+            if self.value: # (1 | B) == 1
                 return Token.TRUE
-            return other
+            return other # (0 | B) == A
         if other.type == "literal":
-            if other.value:
+            if other.value: # (A | 1) == 1
                 return Token.TRUE
-            return self
+            return self # (A | 0) == A
         return Expression([self, Operator("|"), other], explicit=False)
 
     def __pow__(self, other) -> "Token":
-        if self.same(other):
+        """(A ** B) is the same as (A <- B) if (A, B) ∈ {0, 1}"""
+        if self.same(other): # (A <- A) == 1 (as A <- B == 0 only if B = 1, A = 0)
             return Token.TRUE
+        if self.is_inversed(other):
+            return self # (A <- ~A) == A
         if self.type == "literal":
-            if self.value:
+            if self.value: # (1 <- B) == 1
                 return Token.TRUE
-            return -other
+            return -other # (0 <- B) == ~B ( (0 <- 1) == 0; (0 <- 0) == 1 )
         if other.type == "literal":
-            if other.value:
+            if other.value: # (A <- 1) == A ( (0 <- 1) == 0; (1 <- 1) == 1 )
                 return self
-            return Token.TRUE
+            return Token.TRUE # (A <- 0) == 1
         return Expression([other, Operator("->"), self], explicit=False)
 
     def __xor__(self, other) -> "Token":
+        if self.is_inversed(other):
+            return Token.TRUE # (A ^ ~A) == 1, as (A ^ B) == ~(A == B)
         if self.same(other):
-            return Token.FALSE
+            return Token.FALSE # (A ^ A) == 0, as (A ^ B) == ~(A == B)
         if self.type == "literal":
-            if self.value:
+            if self.value: # (1 ^ B) == ~B
                 return -other
-            return other
+            return other # (0 ^ B) == B
         if other.type == "literal":
-            if other.value:
+            if other.value: # (A ^ 1) == ~A
                 return -self
-            return self
+            return self # (A ^ 0) == A
         return Expression([self, Operator("^"), other], explicit=False)
 
     def __neg__(self) -> "Token":
@@ -79,17 +96,17 @@ class Token:
 
     def __eq__(self, other) -> "Token":
         if self.same(other):
-            return Token.TRUE
+            return Token.TRUE # obvious
         if self.type == "literal":
-            if self.value:
+            if self.value: # (1 == B) == B
                 return other
-            return -other
+            return -other # (0 == B) == ~B
         if other.type == "literal":
-            if other.value:
+            if other.value: # (A == 1) == A
                 return self
-            return -self
+            return -self # (A == 0) == A
         if self.type != "expr" and other.type == "expr":
-            return Literal(other == self)
+            return other == self # using Expression.__eq__ 
         return Expression([self, Operator("=="), other], explicit=False)
 
     def deep_copy(self) -> "Token":
@@ -228,6 +245,17 @@ class Expression(Token):
         """
         return Expression(Expression.tokens_from_string(string))
 
+    def forced_solve(self) -> int:
+        """Tries to solve using all letter combinations. If expression evaluates to the same result every time, returns this result, else raises ValueError"""
+        last_result = None
+        for dataset in self.datasets([*self.atoms()]):
+            result = self.value(dataset)
+            if last_result is None:
+                last_result = result
+            if result != last_result:
+                raise ValueError("This expression yields different results with different inputs")
+        return result
+
     def solve(self, context: Optional[Dict[str, Value]] = None, treeset: Optional[set] = None, full_unwrap: bool = False, **kwargs: Value) -> Token:
         """
         
@@ -242,9 +270,6 @@ class Expression(Token):
         :returns: new (solved) expression, if full_unwrap is False, else result of solving, unwrapped
 
         """
-
-        if len(self.tokens) == 1:
-            return self.unwrap(full_unwrap)
 
         context = context or kwargs
 
@@ -265,6 +290,9 @@ class Expression(Token):
             else:
                 result[index] = result[index].solve(context)
         
+        if len(self.tokens) == 1:
+            return Expression(result).unwrap(full_unwrap)
+
         next_op = min(
             [x for x in indices if x not in atoms], 
             key=lambda x: result[x].priority()
@@ -282,7 +310,7 @@ class Expression(Token):
                     result[next_op + 1]
                 )
             ]
-        return Expression(result).solve(context, full_unwrap=full_unwrap, treeset=treeset, explicit=self.explicit)
+        return Expression(result, explicit=self.explicit).unwrap().solve(context, full_unwrap=full_unwrap, treeset=treeset)
     
     @property
     def identifier(self) -> str:
@@ -320,6 +348,8 @@ class Expression(Token):
         letters = tuple(self.atoms() | other.atoms())
 
         for dataset in self.datasets(letters):
+            self_res = self.solve(dataset).unwrap(full_unwrap=True)
+            other_res = other.solve(dataset).unwrap(full_unwrap=True)
             if self.solve(dataset).identifier != other.solve(dataset).identifier:
                 return Token.FALSE
         return Token.TRUE
@@ -335,7 +365,7 @@ class Expression(Token):
         Note this is not the same as `self == other`: This function returns a boolean value, while == returns a Literal
         
         """
-        return (self == other)[0].value
+        return (self == other).value
 
     def atoms(self) -> Set[str]:
         """Returns a set of letters representing expression atoms"""
