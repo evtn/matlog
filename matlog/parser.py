@@ -10,7 +10,7 @@ class Parser:
         self.string = expr_string
         if not expr_string:
             raise ParseError("Empty expression string")
-        self.state: bool = False # False if expects atom, else expects operator
+        self.state: bool = False  # False if expects atom, else expects operator
 
     def parse(self, return_index: bool = False) -> Expression:
         """Parses an expression string and builds an expression"""
@@ -31,7 +31,9 @@ class Parser:
             else:
                 if any(x.startswith(char) for x in Operator.unary_operators):
                     if result and result[-1].identifier in Operator.unary_operators:
-                        raise ParseError("Can't parse two or more unary operators in a row, use brackets to split them: ~(~A)")
+                        raise ParseError(
+                            "Can't parse two or more unary operators in a row, use brackets to split them: ~(~A)"
+                        )
                     i, token = self.parse_op(i)
                     result.append(token)
                 else:
@@ -53,7 +55,9 @@ class Parser:
                     self.state = True
 
         if not self.state:
-            raise ParseError("Invalid expression string. Expected Non-Operator token, found EOL")
+            raise ParseError(
+                "Invalid expression string. Expected Non-Operator token, found EOL"
+            )
 
         expr = Expression(result).solve().unwrap()
 

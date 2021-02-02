@@ -103,7 +103,7 @@ print(expr.solve({"B": 0})) # prints (C) too
 If you're wondering if expressions are equal (producing the same results with any set of values), you can use `Expression.equals()` method:
 
 ```python
-from matlog import Expression, are_equal
+from matlog import Expression
 expr1 = Expression("A & B")
 expr2 = Expression("B & A")
 print(expr1.equals(expr2)) # True
