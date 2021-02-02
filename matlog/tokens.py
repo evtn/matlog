@@ -7,6 +7,7 @@ Value = Union[bool, int]
 
 class Token:
     """Base class for tokens. Has no value and cannot be used in expression directly (would raise an error at some point)"""
+
     type = "unknown"
     identifier = "None"
 
@@ -30,63 +31,63 @@ class Token:
 
     def __and__(self, other) -> "Token":
         if self.same(other):
-            return self # (A & A) == A
+            return self  # (A & A) == A
         if self.is_inversed(other):
-            return Token.FALSE # (A & ~A) == 0
+            return Token.FALSE  # (A & ~A) == 0
         if self.type == "literal":
-            if self.value: # (1 & B) == B
+            if self.value:  # (1 & B) == B
                 return other
-            return Token.FALSE # (0 & B) == B
+            return Token.FALSE  # (0 & B) == B
         if other.type == "literal":
-            if other.value: # (A & 1) == A
+            if other.value:  # (A & 1) == A
                 return self
-            return Token.FALSE # (A & 0) == A
+            return Token.FALSE  # (A & 0) == A
         return Expression([self, Operator("&"), other], explicit=False)
 
     def __or__(self, other) -> "Token":
         if self.same(other):
-            return self # (A | A) == A
+            return self  # (A | A) == A
         if self.is_inversed(other):
-            return Token.TRUE # (A | ~A) == 1
+            return Token.TRUE  # (A | ~A) == 1
         if self.type == "literal":
-            if self.value: # (1 | B) == 1
+            if self.value:  # (1 | B) == 1
                 return Token.TRUE
-            return other # (0 | B) == A
+            return other  # (0 | B) == A
         if other.type == "literal":
-            if other.value: # (A | 1) == 1
+            if other.value:  # (A | 1) == 1
                 return Token.TRUE
-            return self # (A | 0) == A
+            return self  # (A | 0) == A
         return Expression([self, Operator("|"), other], explicit=False)
 
     def __pow__(self, other) -> "Token":
         """(A ** B) is the same as (A <- B) if (A, B) ∈ {0, 1}"""
-        if self.same(other): # (A <- A) == 1 (as A <- B == 0 only if B = 1, A = 0)
+        if self.same(other):  # (A <- A) == 1 (as A <- B == 0 only if B = 1, A = 0)
             return Token.TRUE
         if self.is_inversed(other):
-            return self # (A <- ~A) == A
+            return self  # (A <- ~A) == A
         if self.type == "literal":
-            if self.value: # (1 <- B) == 1
+            if self.value:  # (1 <- B) == 1
                 return Token.TRUE
-            return -other # (0 <- B) == ~B ( (0 <- 1) == 0; (0 <- 0) == 1 )
+            return -other  # (0 <- B) == ~B ( (0 <- 1) == 0; (0 <- 0) == 1 )
         if other.type == "literal":
-            if other.value: # (A <- 1) == A ( (0 <- 1) == 0; (1 <- 1) == 1 )
+            if other.value:  # (A <- 1) == A ( (0 <- 1) == 0; (1 <- 1) == 1 )
                 return self
-            return Token.TRUE # (A <- 0) == 1
+            return Token.TRUE  # (A <- 0) == 1
         return Expression([other, Operator("->"), self], explicit=False)
 
     def __xor__(self, other) -> "Token":
         if self.is_inversed(other):
-            return Token.TRUE # (A ^ ~A) == 1, as (A ^ B) == ~(A == B)
+            return Token.TRUE  # (A ^ ~A) == 1, as (A ^ B) == ~(A == B)
         if self.same(other):
-            return Token.FALSE # (A ^ A) == 0, as (A ^ B) == ~(A == B)
+            return Token.FALSE  # (A ^ A) == 0, as (A ^ B) == ~(A == B)
         if self.type == "literal":
-            if self.value: # (1 ^ B) == ~B
+            if self.value:  # (1 ^ B) == ~B
                 return -other
-            return other # (0 ^ B) == B
+            return other  # (0 ^ B) == B
         if other.type == "literal":
-            if other.value: # (A ^ 1) == ~A
+            if other.value:  # (A ^ 1) == ~A
                 return -self
-            return self # (A ^ 0) == A
+            return self  # (A ^ 0) == A
         return Expression([self, Operator("^"), other], explicit=False)
 
     def __neg__(self) -> "Token":
@@ -96,17 +97,17 @@ class Token:
 
     def __eq__(self, other) -> "Token":
         if self.same(other):
-            return Token.TRUE # obvious
+            return Token.TRUE  # obvious
         if self.type == "literal":
-            if self.value: # (1 == B) == B
+            if self.value:  # (1 == B) == B
                 return other
-            return -other # (0 == B) == ~B
+            return -other  # (0 == B) == ~B
         if other.type == "literal":
-            if other.value: # (A == 1) == A
+            if other.value:  # (A == 1) == A
                 return self
-            return -self # (A == 0) == A
+            return -self  # (A == 0) == A
         if self.type != "expr" and other.type == "expr":
-            return other == self # using Expression.__eq__ 
+            return other == self  # using Expression.__eq__
         return Expression([self, Operator("=="), other], explicit=False)
 
     def deep_copy(self) -> "Token":
@@ -135,6 +136,7 @@ class Token:
 
 class Atom(Token):
     """Atom token - variable value represented by one letter."""
+
     type = "atom"
 
     def __init__(self, identifier: str):
@@ -151,12 +153,13 @@ class Atom(Token):
 
 class Literal(Token):
     """Literal token - literal value (0 or 1)."""
+
     type = "literal"
 
     def __init__(self, value: Value):
         self.value = value
         self.identifier = str(cut_literal(value))
-    
+
     def solve(self, context: Dict[str, Value]) -> "Literal":
         return self
 
@@ -166,6 +169,7 @@ class Literal(Token):
 
 class Operator(Token):
     """Operator token - defines an operation. Has no value."""
+
     type = "op"
 
     operators = {
@@ -219,20 +223,24 @@ class Expression(Token):
 
         """
         if isinstance(data, str):
-            data = Expression.tokens_from_string(data).tokens # this one is from parser.py
+            data = Expression.tokens_from_string(
+                data
+            ).tokens  # this one is from parser.py
         self.tokens = data
         self.explicit = explicit
 
     @staticmethod
     def tokens_from_string(string: str) -> List[Token]:
         """
-        Constructs a list of tokens from an expression string. 
+        Constructs a list of tokens from an expression string.
         As this requires a Parser, this function is overloaded by parser.py, providing an implementation.
 
         :param str string: string to parse
 
         """
-        raise NotImplementedError("You have some mess with imports, as this function should've been overloaded by parser.py")
+        raise NotImplementedError(
+            "You have some mess with imports, as this function should've been overloaded by parser.py"
+        )
 
     @staticmethod
     def from_string(string: str) -> "Expression":
@@ -253,16 +261,24 @@ class Expression(Token):
             if last_result is None:
                 last_result = result
             if result != last_result:
-                raise ValueError("This expression yields different results with different inputs")
+                raise ValueError(
+                    "This expression yields different results with different inputs"
+                )
         return result
 
-    def solve(self, context: Optional[Dict[str, Value]] = None, treeset: Optional[set] = None, full_unwrap: bool = False, **kwargs: Value) -> Token:
+    def solve(
+        self,
+        context: Optional[Dict[str, Value]] = None,
+        treeset: Optional[set] = None,
+        full_unwrap: bool = False,
+        **kwargs: Value,
+    ) -> Token:
         """
-        
+
         Solves expression with provided context (recursively). If context is unspecified, uses keyword arguments.
 
         :param Optional[Dict[str, Value]] context: Expression context (maps atoms to values) Exapmle: {"A": 1, "B": 0}
-        :param Optional[set] treeset: set of previous identifiers for internal usage. 
+        :param Optional[set] treeset: set of previous identifiers for internal usage.
         :param bool full_unwrap: passed to .unwrap() if expression length equals 1
         :param Value **kwargs: used as context if context is unspecified
 
@@ -289,33 +305,29 @@ class Expression(Token):
                 result[index] = result[index].solve(context, full_unwrap=True)
             else:
                 result[index] = result[index].solve(context)
-        
+
         if len(self.tokens) == 1:
             return Expression(result).unwrap(full_unwrap)
 
         next_op = min(
-            [x for x in indices if x not in atoms], 
-            key=lambda x: result[x].priority()
+            [x for x in indices if x not in atoms], key=lambda x: result[x].priority()
         )
         if result[next_op].identifier in Operator.unary_operators:
-            result[next_op:next_op + 2] = [
-                result[next_op].func(
-                    result[next_op + 1]
-                )
-            ]
+            result[next_op : next_op + 2] = [result[next_op].func(result[next_op + 1])]
         else:
-            result[next_op - 1:next_op + 2] = [
-                result[next_op].func(
-                    result[next_op - 1], 
-                    result[next_op + 1]
-                )
+            result[next_op - 1 : next_op + 2] = [
+                result[next_op].func(result[next_op - 1], result[next_op + 1])
             ]
-        return Expression(result, explicit=self.explicit).unwrap().solve(context, full_unwrap=full_unwrap, treeset=treeset)
-    
+        return (
+            Expression(result, explicit=self.explicit)
+            .unwrap()
+            .solve(context, full_unwrap=full_unwrap, treeset=treeset)
+        )
+
     @property
     def identifier(self) -> str:
         """Expression identifier (expression string)"""
-        
+
         contents = " ".join(map(str, self.tokens))
         if not self.explicit:
             return contents
@@ -363,7 +375,7 @@ class Expression(Token):
         """
         Returns True if two Expression objects are equal.
         Note this is not the same as `self == other`: This function returns a boolean value, while == returns a Literal
-        
+
         """
         return (self == other).value
 
@@ -384,27 +396,17 @@ class Expression(Token):
 
     def __repr__(self) -> str:
         identifier = "\n  ".join(
-            map(
-                lambda x: "\n  ".join(repr(x).split("\n")),
-                self.tokens
-            )
+            map(lambda x: "\n  ".join(repr(x).split("\n")), self.tokens)
         )
         return f"Token.{['GROUP', 'EXPR'][self.explicit]}[\n  {identifier}\n]"
 
     def copy(self) -> "Expression":
-        """Makes a shallow copy of Expression"""     
+        """Makes a shallow copy of Expression"""
         return Expression(self.tokens)
 
-    def deep_copy(self) -> "Expression":  
-        """Makes a deep copy of Expression"""     
-        return Expression(
-            list(
-                map(
-                    lambda token: token.deep_copy(),
-                    self.tokens
-                )
-            )
-        )
+    def deep_copy(self) -> "Expression":
+        """Makes a deep copy of Expression"""
+        return Expression(list(map(lambda token: token.deep_copy(), self.tokens)))
 
     def value(self, context=None) -> int:
         """
@@ -425,7 +427,7 @@ class Expression(Token):
         Returns a truth table for Expression
 
         :param Optional[bool] keep: optional filter parameter. If specified, only rows with this value would be used.
-        :returns: truth table as utils.Table object (can be printed for a pretty table) 
+        :returns: truth table as utils.Table object (can be printed for a pretty table)
 
         """
         result = []
@@ -434,10 +436,9 @@ class Expression(Token):
             dataset[identifier] = self.value(dataset)
             if keep is None or dataset[identifier] == keep:
                 result.append(dataset)
-        return Table({
-            "identifiers": [*sorted(self.atoms()), identifier],
-            "values": result
-        })
+        return Table(
+            {"identifiers": [*sorted(self.atoms()), identifier], "values": result}
+        )
 
 
 Token.TRUE = Literal(1)
