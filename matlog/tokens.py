@@ -37,11 +37,11 @@ class Token:
         if self.type == "literal":
             if self.value:  # (1 & B) == B
                 return other
-            return Token.FALSE  # (0 & B) == B
+            return Token.FALSE  # (0 & B) == 0
         if other.type == "literal":
             if other.value:  # (A & 1) == A
                 return self
-            return Token.FALSE  # (A & 0) == A
+            return Token.FALSE  # (A & 0) == 0
         return Expression([self, Operator("&"), other], explicit=False)
 
     def __or__(self, other) -> "Token":
@@ -52,7 +52,7 @@ class Token:
         if self.type == "literal":
             if self.value:  # (1 | B) == 1
                 return Token.TRUE
-            return other  # (0 | B) == A
+            return other  # (0 | B) == B
         if other.type == "literal":
             if other.value:  # (A | 1) == 1
                 return Token.TRUE
@@ -105,7 +105,7 @@ class Token:
         if other.type == "literal":
             if other.value:  # (A == 1) == A
                 return self
-            return -self  # (A == 0) == A
+            return -self  # (A == 0) == ~A
         if self.type != "expr" and other.type == "expr":
             return other == self  # using Expression.__eq__
         return Expression([self, Operator("=="), other], explicit=False)
@@ -123,7 +123,7 @@ class Token:
         """Makes a shallow copy of Token."""
         raise NotImplementedError
 
-    def solve(self, context: Dict[str, Value]) -> "Token":
+    def solve(self, context: Dict[str, Value], *args, **kwargs) -> "Token":
         """
 
         Returns a Token representing a resolved current token.
@@ -132,6 +132,12 @@ class Token:
 
         """
         raise NotImplementedError
+
+    def unwrap(self, *args, **kwargs):
+        return self
+
+    def __len__(self):
+        return 1
 
 
 class Atom(Token):
@@ -142,13 +148,22 @@ class Atom(Token):
     def __init__(self, identifier: str):
         self.identifier = identifier
 
-    def solve(self, context: Dict[str, Value]) -> Union["Atom", "Literal"]:
+    def solve(
+        self, context: Dict[str, Value], *args, **kwargs
+    ) -> Union["Atom", "Literal"]:
         if self.identifier in context:
             return Literal(context[self.identifier])
         return self
 
     def copy(self):
         return Atom(self.identifier)
+
+    def simplify_with(self, letter: str) -> List[Token]:
+        """Helper method for .simplify()"""
+        return [self.solve(x) for x in combinations(letter)]
+
+    def simplify(self):
+        return Expression([self]).simplify()
 
 
 class Literal(Token):
@@ -159,12 +174,19 @@ class Literal(Token):
     def __init__(self, value: Value):
         self.value = value
         self.identifier = str(cut_literal(value))
-
-    def solve(self, context: Dict[str, Value]) -> "Literal":
+    
+    def solve(self, context: Dict[str, Value], *args, **kwargs) -> "Literal":
         return self
 
     def copy(self):
         return Literal(self.value)
+
+    def simplify_with(self, letter: str) -> List[Token]:
+        """Helper method for .simplify()"""
+        return [self, self]
+
+    def simplify(self):
+        return self
 
 
 class Operator(Token):
@@ -193,7 +215,7 @@ class Operator(Token):
     def __init__(self, identifier: str):
         self.identifier = identifier
 
-    def solve(self, context: Dict[str, Value]) -> NoReturn:
+    def solve(self, context: Dict[str, Value], *args, **kwargs) -> NoReturn:
         """Raises NotImplementedError as Operator can't be solved"""
         raise NotImplementedError("Operators can't have a value")
 
@@ -214,18 +236,14 @@ class Expression(Token):
 
     type = "expr"
 
-    def __init__(self, data: Union[str, List[Token]], explicit: bool = True):
+    def __init__(self, data: List[Token], explicit: bool = True):
         """
         initializes Expression
 
-        :param Union[str, List[Token]] data: list of tokens or expression string (to be parsed)
+        :param List[Token] data: list of tokens or expression string (to be parsed)
         :param bool explicit: specifies whether it is necessary to show brackets in string representation, defaults to True
 
         """
-        if isinstance(data, str):
-            data = Expression.tokens_from_string(
-                data
-            ).tokens  # this one is from parser.py
         self.tokens = data
         self.explicit = explicit
 
@@ -299,30 +317,24 @@ class Expression(Token):
         result = self.tokens[:]
         indices = range(len(result))
 
-        atoms = set([x for x in indices if result[x].type != "op"])
-        for index in atoms:
+        if len(result) == 1:
+            return Expression(result).unwrap(full_unwrap)
+
+        is_unary = len(result) == 2
+
+        for index in range(is_unary, len(result), 2):
             if result[index].type == "expr":
                 result[index] = result[index].solve(context, full_unwrap=True)
             else:
                 result[index] = result[index].solve(context)
+        
+        op_index = 1 - is_unary
 
-        if len(self.tokens) == 1:
-            return Expression(result).unwrap(full_unwrap)
+        result = result[op_index].func(*result[op_index - 1 :: 2])
 
-        next_op = min(
-            [x for x in indices if x not in atoms], key=lambda x: result[x].priority()
-        )
-        if result[next_op].identifier in Operator.unary_operators:
-            result[next_op : next_op + 2] = [result[next_op].func(result[next_op + 1])]
-        else:
-            result[next_op - 1 : next_op + 2] = [
-                result[next_op].func(result[next_op - 1], result[next_op + 1])
-            ]
-        return (
-            Expression(result, explicit=self.explicit)
-            .unwrap()
-            .solve(context, full_unwrap=full_unwrap, treeset=treeset)
-        )
+        result.explicit = self.explicit
+
+        return result.unwrap().solve(context, full_unwrap=full_unwrap, treeset=treeset)
 
     @property
     def identifier(self) -> str:
@@ -439,6 +451,65 @@ class Expression(Token):
         return Table(
             {"identifiers": [*sorted(self.atoms()), identifier], "values": result}
         )
+    def simplify_with(self, letter: str) -> List[Token]:
+        """Helper method for .simplify()"""
+        return [self.solve(x) for x in combinations(letter)]
+
+    def simplify(self) -> "Expression":
+        """
+        Brand new method, simplifies expression with two approaches:
+        1. For every letter, solves expression with 0 and 1 as letter's value, and:
+            - if any result equals self, returns that result, simplified (with .simplify())
+            - if both results are equal, returns the shortest of them, simplified
+            - if results are inversed (one is the opposite of the other), returns `(letter ^ second_result.simplify()).solve({})`
+        2. Checks if any token of expression equals to self, returns that token, simplified and solved if True
+        """
+        tokens = self.tokens[:]
+        for i, token in enumerate(tokens):
+            if isinstance(token, Expression):
+                tokens[i] = tokens[i].simplify()
+
+        if len(self) < 3:
+            return self
+
+        for letter in self.atoms():
+            # simplified with 0 and 1 instead of letter value
+            zero, one = self.simplify_with(letter)
+            exprs = [zero, one]
+            print("a", self, zero, one, letter)
+
+            min_index = lambda *exprs: min(
+                range(len(exprs)), key=lambda x: len(exprs[x])
+            )
+
+            if self.equals(zero):
+                if min_index(self, zero):
+                    return zero.simplify().solve({})
+                return self
+
+            if self.equals(one):
+                if min_index(self, one):
+                    return one.simplify().solve({})
+                return self
+
+            if Expression([zero]).equals(one):
+                return exprs[min_index(*exprs)].simplify().solve({})
+
+            if Expression([-zero]).equals(one):
+                return Expression([Atom(letter), Operator("^"), one.simplify()]).solve(
+                    {}
+                )
+
+        is_unary = len(self.tokens) == 2
+
+        for index in range(is_unary, len(self.tokens), 2):
+            if self.equals(self.tokens[index]):
+                return self.tokens[index].simplify().solve()
+
+        return self.solve({})
+
+    def __len__(self):
+        return sum(map(len, self.tokens))
 
 
 Token.TRUE = Literal(1)

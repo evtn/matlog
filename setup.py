@@ -27,6 +27,7 @@ setup(
     author_email=about['__author_email__'],
     url=about['__url__'],
     packages=['matlog'],
+    install_requires=["lark"],
     include_package_data=True,
     python_requires=">=3.6.*",
     license=about['__license__'],
