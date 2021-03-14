@@ -2,17 +2,21 @@ from .tokens import Expression, Atom, Literal, Operator
 from lark import Lark, Transformer
 
 
-
 class MatlogT(Transformer):
     def unary_expr(self, tokens):
-        return Expression([Operator(tokens[0].children[0].value), tokens[1]], explicit=False)
-    
+        return Expression(
+            [Operator(tokens[0].children[0].value), tokens[1]], explicit=False
+        )
+
     def parens_expr(self, tokens):
         tokens[0].explicit = True
         return tokens[0]
 
     def bin_expr(self, tokens):
-        return Expression([tokens[0], Operator(tokens[1].children[0].value), tokens[2]], explicit=False)
+        return Expression(
+            [tokens[0], Operator(tokens[1].children[0].value), tokens[2]],
+            explicit=False,
+        )
 
     def literal(self, tokens):
         return Literal(bool(int(tokens[0])))
@@ -22,13 +26,7 @@ class MatlogT(Transformer):
 
 
 def parse(s, process_level=0):
-    expr = Expression(
-        [
-            transformer.transform(
-                parser.parse(s)
-            )
-        ]
-    ).unwrap()
+    expr = Expression([transformer.transform(parser.parse(s))]).unwrap()
 
     if process_level:
         expr = Expression([expr.solve()]).unwrap()

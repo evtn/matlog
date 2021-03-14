@@ -148,7 +148,9 @@ class Atom(Token):
     def __init__(self, identifier: str):
         self.identifier = identifier
 
-    def solve(self, context: Dict[str, Value], *args, **kwargs) -> Union["Atom", "Literal"]:
+    def solve(
+        self, context: Dict[str, Value], *args, **kwargs
+    ) -> Union["Atom", "Literal"]:
         if self.identifier in context:
             return Literal(context[self.identifier])
         return self
@@ -318,7 +320,7 @@ class Expression(Token):
         if len(result) == 1:
             return Expression(result).unwrap(full_unwrap)
 
-        is_unary = (len(result) == 2)
+        is_unary = len(result) == 2
 
         for index in range(is_unary, len(result), 2):
             if result[index].type == "expr":
@@ -326,15 +328,13 @@ class Expression(Token):
             else:
                 result[index] = result[index].solve(context)
 
-        op_index = (1 - is_unary)
-        
-        result = result[op_index].func(*result[op_index - 1::2])
-        
+        op_index = 1 - is_unary
+
+        result = result[op_index].func(*result[op_index - 1 :: 2])
+
         result.explicit = self.explicit
-        
-        return (
-            result.unwrap().solve(context, full_unwrap=full_unwrap, treeset=treeset)
-        )
+
+        return result.unwrap().solve(context, full_unwrap=full_unwrap, treeset=treeset)
 
     @property
     def identifier(self) -> str:
@@ -464,14 +464,12 @@ class Expression(Token):
             - if both results are equal, returns the shortest of them, simplified
             - if results are inversed (one is the opposite of the other), returns `(letter ^ second_result.simplify()).solve({})`
         2. Checks if any token of expression equals to self, returns that token, simplified and solved if True
-
-
         """
         tokens = self.tokens[:]
         for i, token in enumerate(tokens):
             if isinstance(token, Expression):
                 tokens[i] = tokens[i].simplify()
-        
+
         if len(self) < 3:
             return self
 
@@ -480,10 +478,9 @@ class Expression(Token):
             zero, one = self.simplify_with(letter)
             exprs = [zero, one]
             print("a", self, zero, one, letter)
-            
+
             min_index = lambda *exprs: min(
-                range(len(exprs)), 
-                key=lambda x: len(exprs[x])
+                range(len(exprs)), key=lambda x: len(exprs[x])
             )
 
             if self.equals(zero):
@@ -498,11 +495,13 @@ class Expression(Token):
 
             if Expression([zero]).equals(one):
                 return exprs[min_index(*exprs)].simplify().solve({})
-            
+
             if Expression([-zero]).equals(one):
-                return Expression([Atom(letter), Operator("^"), one.simplify()]).solve({})
-        
-        is_unary = (len(self.tokens) == 2)
+                return Expression([Atom(letter), Operator("^"), one.simplify()]).solve(
+                    {}
+                )
+
+        is_unary = len(self.tokens) == 2
 
         for index in range(is_unary, len(self.tokens), 2):
             if self.equals(self.tokens[index]):
@@ -512,7 +511,6 @@ class Expression(Token):
 
     def __len__(self):
         return sum(map(len, self.tokens))
-
 
 
 Token.TRUE = Literal(1)
