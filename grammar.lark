@@ -1,0 +1,26 @@
+%import common.WS
+%ignore WS
+
+letter: "A".."Z" | "a".."z"
+literal: "0".."1"
+
+!and_: "&"
+!or_: "|"
+!xor: "^"
+!equality: "=="
+!impl: "->"
+!rev_impl: "<-"
+!invert: "~"
+
+?low_op: rev_impl | impl | equality | xor
+?bin_expr: or_expr (low_op bin_expr)*
+?or_expr: and_expr or_ or_expr -> bin_expr | and_expr
+?and_expr: unary_expr and_ and_expr -> bin_expr | unary_expr
+?unary_expr: invert unary_expr | atom
+parens_expr: "(" bin_expr ")"
+
+?atom: letter 
+     | literal
+     | parens_expr
+
+?start: bin_expr
