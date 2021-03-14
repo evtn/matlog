@@ -148,13 +148,20 @@ class Atom(Token):
     def __init__(self, identifier: str):
         self.identifier = identifier
 
-    def solve(self, context: Dict[str, Value]) -> Union["Atom", "Literal"]:
+    def solve(self, context: Dict[str, Value], *args, **kwargs) -> Union["Atom", "Literal"]:
         if self.identifier in context:
             return Literal(context[self.identifier])
         return self
 
     def copy(self):
         return Atom(self.identifier)
+
+    def simplify_with(self, letter: str) -> List[Token]:
+        """Helper method for .simplify()"""
+        return [self.solve(x) for x in combinations(letter)]
+
+    def simplify(self):
+        return Expression([self]).simplify()
 
 
 class Literal(Token):
@@ -171,6 +178,13 @@ class Literal(Token):
 
     def copy(self):
         return Literal(self.value)
+
+    def simplify_with(self, letter: str) -> List[Token]:
+        """Helper method for .simplify()"""
+        return [self, self]
+
+    def simplify(self):
+        return self
 
 
 class Operator(Token):
@@ -437,6 +451,68 @@ class Expression(Token):
         return Table(
             {"identifiers": [*sorted(self.atoms()), identifier], "values": result}
         )
+
+    def simplify_with(self, letter: str) -> List[Token]:
+        """Helper method for .simplify()"""
+        return [self.solve(x) for x in combinations(letter)]
+
+    def simplify(self) -> "Expression":
+        """
+        Brand new method, simplifies expression with two approaches:
+        1. For every letter, solves expression with 0 and 1 as letter's value, and:
+            - if any result equals self, returns that result, simplified (with .simplify())
+            - if both results are equal, returns the shortest of them, simplified
+            - if results are inversed (one is the opposite of the other), returns `(letter ^ second_result.simplify()).solve({})`
+        2. Checks if any token of expression equals to self, returns that token, simplified and solved if True
+
+
+        """
+        tokens = self.tokens[:]
+        for i, token in enumerate(tokens):
+            if isinstance(token, Expression):
+                tokens[i] = tokens[i].simplify()
+        
+        if len(self) < 3:
+            return self
+
+        for letter in self.atoms():
+            # simplified with 0 and 1 instead of letter value
+            zero, one = self.simplify_with(letter)
+            exprs = [zero, one]
+            print("a", self, zero, one, letter)
+            
+            min_index = lambda *exprs: min(
+                range(len(exprs)), 
+                key=lambda x: len(exprs[x])
+            )
+
+            if self.equals(zero):
+                if min_index(self, zero):
+                    return zero.simplify().solve({})
+                return self
+
+            if self.equals(one):
+                if min_index(self, one):
+                    return one.simplify().solve({})
+                return self
+
+            if Expression([zero]).equals(one):
+                return exprs[min_index(*exprs)].simplify().solve({})
+            
+            if Expression([-zero]).equals(one):
+                return Expression([Atom(letter), Operator("^"), one.simplify()]).solve({})
+        
+        is_unary = (len(self.tokens) == 2)
+
+        for index in range(is_unary, len(self.tokens), 2):
+            if self.equals(self.tokens[index]):
+                return self.tokens[index].simplify().solve()
+
+        return self.solve({})
+
+    def __len__(self):
+        return sum(map(len, self.tokens))
+
 
 
 Token.TRUE = Literal(1)
