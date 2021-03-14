@@ -18,7 +18,8 @@ class Table:
     def __str__(self):
         return "\n".join(
             [
-                " ".join(self.data["identifiers"]),
+
+                " ".join([*self.data["identifiers"][:-1], f'[{self.data["identifiers"][-1]}]']),
                 *map(
                     lambda row: " ".join(
                         map(lambda i: str(row[i]), self.data["identifiers"])
