@@ -37,11 +37,11 @@ class Token:
         if self.type == "literal":
             if self.value:  # (1 & B) == B
                 return other
-            return Token.FALSE  # (0 & B) == B
+            return Token.FALSE  # (0 & B) == 0
         if other.type == "literal":
             if other.value:  # (A & 1) == A
                 return self
-            return Token.FALSE  # (A & 0) == A
+            return Token.FALSE  # (A & 0) == 0
         return Expression([self, Operator("&"), other], explicit=False)
 
     def __or__(self, other) -> "Token":
@@ -52,7 +52,7 @@ class Token:
         if self.type == "literal":
             if self.value:  # (1 | B) == 1
                 return Token.TRUE
-            return other  # (0 | B) == A
+            return other  # (0 | B) == B
         if other.type == "literal":
             if other.value:  # (A | 1) == 1
                 return Token.TRUE
@@ -105,7 +105,7 @@ class Token:
         if other.type == "literal":
             if other.value:  # (A == 1) == A
                 return self
-            return -self  # (A == 0) == A
+            return -self  # (A == 0) == ~A
         if self.type != "expr" and other.type == "expr":
             return other == self  # using Expression.__eq__
         return Expression([self, Operator("=="), other], explicit=False)
