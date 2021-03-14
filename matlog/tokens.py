@@ -295,29 +295,25 @@ class Expression(Token):
         result = self.tokens[:]
         indices = range(len(result))
 
-        atoms = set([x for x in indices if result[x].type != "op"])
-        for index in atoms:
+        if len(result) == 1:
+            return Expression(result).unwrap(full_unwrap)
+
+        is_unary = (len(result) == 2)
+
+        for index in range(is_unary, len(result), 2):
             if result[index].type == "expr":
                 result[index] = result[index].solve(context, full_unwrap=True)
             else:
                 result[index] = result[index].solve(context)
 
-        if len(self.tokens) == 1:
-            return Expression(result).unwrap(full_unwrap)
-
-        next_op = min(
-            [x for x in indices if x not in atoms], key=lambda x: result[x].priority()
-        )
-        if result[next_op].identifier in Operator.unary_operators:
-            result[next_op : next_op + 2] = [result[next_op].func(result[next_op + 1])]
-        else:
-            result[next_op - 1 : next_op + 2] = [
-                result[next_op].func(result[next_op - 1], result[next_op + 1])
-            ]
+        op_index = (1 - is_unary)
+        
+        result = result[op_index].func(*result[op_index - 1::2])
+        
+        result.explicit = self.explicit
+        
         return (
-            Expression(result, explicit=self.explicit)
-            .unwrap()
-            .solve(context, full_unwrap=full_unwrap, treeset=treeset)
+            result.unwrap().solve(context, full_unwrap=full_unwrap, treeset=treeset)
         )
 
     @property
