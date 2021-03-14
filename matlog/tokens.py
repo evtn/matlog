@@ -133,6 +133,12 @@ class Token:
         """
         raise NotImplementedError
 
+    def unwrap(self, *args, **kwargs):
+        return self
+
+    def __len__(self):
+        return 1
+
 
 class Atom(Token):
     """Atom token - variable value represented by one letter."""
