@@ -1,2 +1,2 @@
-from .parser import Parser
+from .parser import parse
 from .tokens import Expression

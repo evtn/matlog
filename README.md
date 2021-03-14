@@ -4,9 +4,9 @@
 
 Basic usage:    
 ```python
-from matlog import Expression
+from matlog import parse
 
-expr = Expression("A & B")
+expr = parse("A & B")
 print(expr.solve(A=1, B=0)) # False
 print(expr.solve(B=0)) # False
 print(expr.table()) # prints the truth table of expression
@@ -60,14 +60,14 @@ Any expression can contain nested expression strings in brackets. Nested express
 
 Expression class is the main class of the module.
 There are three ways to create an Expression object:
-+ from an [expression string](#expression-string): `Expression(expr_str)`
-+ copying an existing Expression: `expr.copy()` (same as `Expression(expr.tokens)`)
++ from an [expression string](#expression-string): `matlog.parse(expr_str)`
++ copying an existing Expression: `expr.copy()` (same as `matlog.Expression(expr.tokens)`)
 + deep-copying an existing Expression object: `expr.deep_copy()`
-+ constructing an Expression from tokens (**module won't check if it is valid in this case**): `Expression([token1, token2...])`
++ constructing an Expression from tokens (**module won't check if it is valid in this case**): `matlog.Expression([token1, token2...])`
 
 ### Truth tables 
 
-You can use `.table(keep=None)` method to build a truth table for an Expression object.
+You can use `expr.table(keep=None)` method to build a truth table for an Expression object.
 `keep` parameter can be either `1` or `0` (to filter rows with corresponding values) or `None` if you need a full table    
 
 ### Evaluating expression
@@ -75,8 +75,8 @@ You can use `.table(keep=None)` method to build a truth table for an Expression 
 If you need a value for a specific set of values, you can use `.solve()` method like this:
 
 ```python
-from matlog import Expression
-expr = Expression("A & B | C")
+from matlog import parse
+expr = parse("A & B | C")
 print(expr.solve(A=1, B=0, C=1)) # prints (1)
 print(expr.solve({"A": 1, "B": 0, "C": 1})) # you can pass a dictionary too
 ```
@@ -92,19 +92,19 @@ expr.value(A=1, B=0, C=1) # 1 (raises an exception if there's not enough data to
 If you know some (but not all) values, you can also use `.solve()`, providing some values:
 
 ```python
-from matlog import Expression
-expr = Expression("A & B | C")
+from matlog import parse
+expr = parse("A & B | C")
 print(expr.solve(B=0)) # prints (C)
 print(expr.solve({"B": 0})) # prints (C) too
 ``` 
 
 ### Equality check
 
-If you're wondering if expressions are equal (producing the same results with any set of values), you can use `Expression.equals()` method:
+If you're wondering if expressions are equal (producing the same results with any set of values), you can use `Expression.equals(self, other)` method:
 
 ```python
-from matlog import Expression
-expr1 = Expression("A & B")
-expr2 = Expression("B & A")
+from matlog import parse
+expr1 = parse("A & B")
+expr2 = parse("B & A")
 print(expr1.equals(expr2)) # True
 ```

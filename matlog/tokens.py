@@ -214,18 +214,14 @@ class Expression(Token):
 
     type = "expr"
 
-    def __init__(self, data: Union[str, List[Token]], explicit: bool = True):
+    def __init__(self, data: List[Token], explicit: bool = True):
         """
         initializes Expression
 
-        :param Union[str, List[Token]] data: list of tokens or expression string (to be parsed)
+        :param List[Token] data: list of tokens or expression string (to be parsed)
         :param bool explicit: specifies whether it is necessary to show brackets in string representation, defaults to True
 
         """
-        if isinstance(data, str):
-            data = Expression.tokens_from_string(
-                data
-            ).tokens  # this one is from parser.py
         self.tokens = data
         self.explicit = explicit
 
