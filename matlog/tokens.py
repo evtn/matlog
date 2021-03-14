@@ -123,7 +123,7 @@ class Token:
         """Makes a shallow copy of Token."""
         raise NotImplementedError
 
-    def solve(self, context: Dict[str, Value]) -> "Token":
+    def solve(self, context: Dict[str, Value], *args, **kwargs) -> "Token":
         """
 
         Returns a Token representing a resolved current token.
@@ -166,7 +166,7 @@ class Literal(Token):
         self.value = value
         self.identifier = str(cut_literal(value))
 
-    def solve(self, context: Dict[str, Value]) -> "Literal":
+    def solve(self, context: Dict[str, Value], *args, **kwargs) -> "Literal":
         return self
 
     def copy(self):
@@ -199,7 +199,7 @@ class Operator(Token):
     def __init__(self, identifier: str):
         self.identifier = identifier
 
-    def solve(self, context: Dict[str, Value]) -> NoReturn:
+    def solve(self, context: Dict[str, Value], *args, **kwargs) -> NoReturn:
         """Raises NotImplementedError as Operator can't be solved"""
         raise NotImplementedError("Operators can't have a value")
 
