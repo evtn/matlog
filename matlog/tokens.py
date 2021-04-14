@@ -477,7 +477,6 @@ class Expression(Token):
             # simplified with 0 and 1 instead of letter value
             zero, one = self.simplify_with(letter)
             exprs = [zero, one]
-            print("a", self, zero, one, letter)
 
             min_index = lambda *exprs: min(
                 range(len(exprs)), key=lambda x: len(exprs[x])
