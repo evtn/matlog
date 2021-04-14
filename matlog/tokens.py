@@ -174,7 +174,7 @@ class Literal(Token):
     def __init__(self, value: Value):
         self.value = value
         self.identifier = str(cut_literal(value))
-
+    
     def solve(self, context: Dict[str, Value], *args, **kwargs) -> "Literal":
         return self
 
@@ -327,7 +327,7 @@ class Expression(Token):
                 result[index] = result[index].solve(context, full_unwrap=True)
             else:
                 result[index] = result[index].solve(context)
-
+        
         op_index = 1 - is_unary
 
         result = result[op_index].func(*result[op_index - 1 :: 2])
@@ -451,7 +451,6 @@ class Expression(Token):
         return Table(
             {"identifiers": [*sorted(self.atoms()), identifier], "values": result}
         )
-
     def simplify_with(self, letter: str) -> List[Token]:
         """Helper method for .simplify()"""
         return [self.solve(x) for x in combinations(letter)]
