@@ -505,6 +505,10 @@ class Expression(Token):
             if Expression([zero]).equals(one):
                 return min([zero, one], key=lambda x: x.complexity)
 
+            # case:
+            # if some letter X turns to 0, expression turns to ~Y
+            # if some letter X turns to 1, expression turns to Y
+            # therefore, expression can be written as X == Y
             if Expression([-zero]).equals(one):
                 result = Expression([Atom(letter), Operator("=="), one])
                 if result.complexity < self.complexity:
@@ -513,8 +517,10 @@ class Expression(Token):
         while len(self.tokens) == 1:
             self = self.tokens[0]
 
+        # (X op Y)
         if len(self.tokens) == 3:
             if self.tokens[0].is_negated() and self.tokens[2].is_negated():
+                # (~X == ~Y) <=> (X == Y) and (~X ^ ~Y) <=> (X ^ Y). Negation can be just removed
                 if self.tokens[1].identifier in ["^", "=="]:
                     return Expression(
                         [
@@ -523,6 +529,8 @@ class Expression(Token):
                             self.tokens[2].tokens[1],
                         ]
                     ).simplify()
+                
+                # (~X & ~Y) <=> ~(X | Y) and vice versa
                 if self.tokens[1].identifier in ["&", "|"]:
                     return Expression(
                         [
@@ -538,6 +546,8 @@ class Expression(Token):
                             ),
                         ]
                     ).simplify()
+
+                # (~X -> ~Y) <=> (X <- Y) and vice versa
                 if self.tokens[1].identifier in ["->", "<-"]:
                     return Expression(
                         [
@@ -546,10 +556,14 @@ class Expression(Token):
                             self.tokens[2].tokens[1],
                         ]
                     ).simplify()
+
+            # (~X -> Y) <=> (X | Y)
             if self.tokens[0].is_negated() and self.tokens[1].identifier == "->":
                 return Expression(
                     [self.tokens[0].tokens[1], Operator("|"), self.tokens[2]]
                 )
+
+            # (X <- ~Y) <=> (X | Y)
             if self.tokens[2].is_negated() and self.tokens[1].identifier == "<-":
                 return Expression(
                     [self.tokens[0], Operator("|"), self.tokens[2].tokens[1]]
@@ -558,7 +572,10 @@ class Expression(Token):
                 if self.equals(self.tokens[i]):
                     return self.tokens[i].simplify()
 
-                # removing unnecessary negation with & or ^
+                # (X ^ ~Y) <=> (X == Y)
+                # (~X ^ Y) <=> (X == Y)
+                # (X == ~Y) <=> (X ^ Y)
+                # (~X == Y) <=> (X ^ Y)
                 if (
                     self.tokens[1].identifier in ["^", "=="]
                     and isinstance(self.tokens[i], Expression)
