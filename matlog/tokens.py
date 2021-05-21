@@ -543,7 +543,7 @@ class Expression(Token):
 
         # (X op Y)
         if len(self.tokens) == 3:
-            if self.tokens[0].is_negated() and self.tokens[2].is_negated():
+            if self.matches([[Operator("~"), Token], Operator, [Operator("~"), Token]]):
                 # (~X == ~Y) <=> (X == Y) and (~X ^ ~Y) <=> (X ^ Y). Negation can be just removed
                 if self.tokens[1].identifier in ["^", "=="]:
                     return Expression(
@@ -563,7 +563,9 @@ class Expression(Token):
                                 [
                                     self.tokens[0].tokens[1],
                                     Operator(
-                                        ["&", "|"][self.tokens[1].identifier == "&"]
+                                        ["&", "|"][
+                                            self.tokens[1].matches(Operator("&"))
+                                        ]
                                     ),
                                     self.tokens[2].tokens[1],
                                 ]
@@ -576,19 +578,22 @@ class Expression(Token):
                     return Expression(
                         [
                             self.tokens[0].tokens[1],
-                            Operator(["->", "<-"][self.tokens[1].identifier == "->"]),
+                            Operator(
+                                ["->", "<-"][self.tokens[1].matches(Operator("->"))]
+                            ),
                             self.tokens[2].tokens[1],
                         ]
                     ).simplify()
 
             # (~X -> Y) <=> (X | Y)
-            if self.tokens[0].is_negated() and self.tokens[1].identifier == "->":
+            if self.matches([[Operator("~"), Token], Operator("->"), Token]):
                 return Expression(
                     [self.tokens[0].tokens[1], Operator("|"), self.tokens[2]]
                 )
 
             # (X <- ~Y) <=> (X | Y)
-            if self.tokens[2].is_negated() and self.tokens[1].identifier == "<-":
+
+            if self.matches([Token, Operator("<-"), [Operator("~"), Token]]):
                 return Expression(
                     [self.tokens[0], Operator("|"), self.tokens[2].tokens[1]]
                 )
@@ -619,7 +624,10 @@ class Expression(Token):
         if isinstance(pattern, type):
             return issubclass(Expression, pattern)
         if isinstance(pattern, (list, tuple)):
-            return all(self.tokens[i].matches(subpattern) for i, subpattern in enumerate(pattern))
+            return all(
+                self.tokens[i].matches(subpattern)
+                for i, subpattern in enumerate(pattern)
+            )
         return False
 
     def __len__(self):
