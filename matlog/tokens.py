@@ -382,7 +382,7 @@ class Expression(Token):
     def identifier(self) -> str:
         """Expression identifier (expression string)"""
 
-        contents = " ".join(map(str, self.tokens))
+        contents = " ".join(map(str, self.tokens)).replace("~ ", "~")
         if not self.explicit:
             return contents
         return f"({contents})"
