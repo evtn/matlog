@@ -546,7 +546,10 @@ class Expression(Token):
             # if some letter X turns to 1, expression turns to Y
             # therefore, expression can be written as X == Y
             if Expression([-zero]).equals(one):
-                result = Expression([Atom(letter), Operator("=="), one])
+                if one.complexity > zero.complexity:
+                    result = Expression([Atom(letter), Operator("^"), zero])
+                else:
+                    result = Expression([Atom(letter), Operator("=="), one])
                 if result.complexity < self.complexity:
                     return result.simplify()
 
