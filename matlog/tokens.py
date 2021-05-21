@@ -360,7 +360,7 @@ class Expression(Token):
         indices = range(len(result))
 
         if len(result) == 1:
-            return Expression(result).unwrap(full_unwrap)
+            return result[0].solve(context, full_unwrap=full_unwrap)
 
         is_unary = len(result) == 2
 
