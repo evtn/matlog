@@ -555,9 +555,9 @@ class Expression(Token):
 
         # (X op Y)
         if len(self.tokens) == 3:
-            if self.matches([[Operator("~"), Token], Operator, [Operator("~"), Token]]):
+            if self.matches([["~", Token], Operator, ["~", Token]]):
                 # (~X == ~Y) <=> (X == Y) and (~X ^ ~Y) <=> (X ^ Y). Negation can be just removed
-                if self.tokens[1].identifier in ["^", "=="]:
+                if self.tokens[1].matches(("^", "==")):
                     return Expression(
                         [
                             self.tokens[0].tokens[1],
@@ -567,18 +567,14 @@ class Expression(Token):
                     ).simplify()
 
                 # (~X & ~Y) <=> ~(X | Y) and vice versa
-                if self.tokens[1].identifier in ["&", "|"]:
+                if self.tokens[1].matches(("&", "|")):
                     return Expression(
                         [
                             Operator("~"),
                             Expression(
                                 [
                                     self.tokens[0].tokens[1],
-                                    Operator(
-                                        ["&", "|"][
-                                            self.tokens[1].matches(Operator("&"))
-                                        ]
-                                    ),
+                                    Operator(["&", "|"][self.tokens[1].matches("&")]),
                                     self.tokens[2].tokens[1],
                                 ]
                             ),
@@ -586,26 +582,24 @@ class Expression(Token):
                     ).simplify()
 
                 # (~X -> ~Y) <=> (X <- Y) and vice versa
-                if self.tokens[1].identifier in ["->", "<-"]:
+                if self.tokens[1].matches(("->", "<-")):
                     return Expression(
                         [
                             self.tokens[0].tokens[1],
-                            Operator(
-                                ["->", "<-"][self.tokens[1].matches(Operator("->"))]
-                            ),
+                            Operator(["->", "<-"][self.tokens[1].matches("->")]),
                             self.tokens[2].tokens[1],
                         ]
                     ).simplify()
 
             # (~X -> Y) <=> (X | Y)
-            if self.matches([[Operator("~"), Token], Operator("->"), Token]):
+            if self.matches([["~", Token], "->", Token]):
                 return Expression(
                     [self.tokens[0].tokens[1], Operator("|"), self.tokens[2]]
                 )
 
             # (X <- ~Y) <=> (X | Y)
 
-            if self.matches([Token, Operator("<-"), [Operator("~"), Token]]):
+            if self.matches([Token, "<-", ["~", Token]]):
                 return Expression(
                     [self.tokens[0], Operator("|"), self.tokens[2].tokens[1]]
                 )
@@ -617,11 +611,7 @@ class Expression(Token):
                 # (~X ^ Y) <=> (X == Y)
                 # (X == ~Y) <=> (X ^ Y)
                 # (~X == Y) <=> (X ^ Y)
-                if (
-                    self.tokens[1].identifier in ["^", "=="]
-                    and isinstance(self.tokens[i], Expression)
-                    and self.tokens[i].tokens[0].identifier == "~"
-                ):
+                if self.matches([["~", Token], ("^", "=="), Token][:: (-1) ** i]):
                     return Expression(
                         [
                             self.tokens[2 - i],
