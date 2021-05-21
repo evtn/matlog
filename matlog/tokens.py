@@ -176,6 +176,10 @@ class Atom(Token):
 
     def matches(self, pattern: Union[type, Token]) -> bool:
         """Custom pattern matching method"""
+        if isinstance(pattern, tuple):
+            return any(self.matches(option) for option in pattern)
+        if isinstance(pattern, str):
+            return pattern == self.identifier
         if isinstance(pattern, type):
             return issubclass(Atom, pattern)
         return isinstance(pattern, Atom) and pattern.identifier == self.identifier
@@ -203,6 +207,10 @@ class Literal(Token):
 
     def matches(self, pattern: Union[type, Token]) -> bool:
         """Custom pattern matching method"""
+        if isinstance(pattern, tuple):
+            return any(self.matches(option) for option in pattern)
+        if isinstance(pattern, str):
+            return pattern == self.identifier
         if isinstance(pattern, type):
             return issubclass(Literal, pattern)
         return isinstance(pattern, Literal) and pattern.value == self.value
@@ -252,6 +260,10 @@ class Operator(Token):
 
     def matches(self, pattern: Union[type, Token]) -> bool:
         """Custom pattern matching method"""
+        if isinstance(pattern, tuple):
+            return any(self.matches(option) for option in pattern)
+        if isinstance(pattern, str):
+            return pattern == self.identifier
         if isinstance(pattern, type):
             return issubclass(Operator, pattern)
         return isinstance(pattern, Operator) and pattern.identifier == self.identifier
@@ -621,6 +633,10 @@ class Expression(Token):
 
     def matches(self, pattern: Union[type, "Token"]) -> bool:
         """Custom pattern matching method"""
+        if isinstance(pattern, tuple):
+            return any(self.matches(option) for option in pattern)
+        if isinstance(pattern, str):
+            return pattern == self.identifier
         if isinstance(pattern, type):
             return issubclass(Expression, pattern)
         if isinstance(pattern, (list, tuple)):
