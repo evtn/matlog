@@ -79,7 +79,7 @@ If you need a value for a specific set of values, you can use `.solve()` method 
 from matlog import parse
 
 expr = parse("A & B | C")
-print(expr.solve(A=1, B=0, C=1)) # prints (1)
+print(expr.solve(A=1, B=0, C=1)) # prints 1
 print(expr.solve({"A": 1, "B": 0, "C": 1})) # you can pass a dictionary too
 ```
 
@@ -97,20 +97,20 @@ If you know some (but not all) values, you can also use `.solve()`, providing so
 from matlog import parse
 
 expr = parse("A & B | C")
-print(expr.solve(B=0)) # prints (C)
-print(expr.solve({"B": 0})) # prints (C) too
+print(expr.solve(B=0)) # prints C
+print(expr.solve({"B": 0})) # prints C too
 ``` 
 
 ### Simplify
 
 Smart (smarter than watermelon!) algorithm, simplifies expressions better than bare `.solve()`.    
-Requires slightly more time.
+This method recursively simplifies complex expressions, so expect it to work slower than (again) bare `.solve()`.
 
 ```python
 from matlog import parse
 
 expr = parse("(A | B | C) & ~(A | ~B | C)")
-print(expr.simplify()) # prints (~(A | ~B | C))
+print(expr.simplify()) # prints ~(A | ~B | C)
 ```
 
 

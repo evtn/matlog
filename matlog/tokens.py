@@ -8,12 +8,16 @@ Value = Union[bool, int]
 class Token:
     """Base class for tokens. Has no value and cannot be used in expression directly (would raise an error at some point)"""
 
+    complexity: int = 0
     type = "unknown"
     identifier = "None"
 
     def same(self, other: "Token") -> bool:
         """tries to say if two instances of Token are equal"""
         return self.identifier.strip("()") == other.identifier.strip("()")
+
+    def is_negated(self):
+        return False
 
     def is_inversed(self, other) -> bool:
         if self.type == other.type == "literal":
@@ -106,8 +110,6 @@ class Token:
             if other.value:  # (A == 1) == A
                 return self
             return -self  # (A == 0) == ~A
-        if self.type != "expr" and other.type == "expr":
-            return other == self  # using Expression.__eq__
         return Expression([self, Operator("=="), other], explicit=False)
 
     def deep_copy(self) -> "Token":
@@ -139,10 +141,20 @@ class Token:
     def __len__(self):
         return 1
 
+    def simplify(self) -> "Token":
+        return self
+
+    def matches(self, pattern: Union[type, "Token"]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, type):
+            return issubclass(Token, pattern)
+        return False
+
 
 class Atom(Token):
     """Atom token - variable value represented by one letter."""
 
+    complexity: int = 1
     type = "atom"
 
     def __init__(self, identifier: str):
@@ -162,19 +174,27 @@ class Atom(Token):
         """Helper method for .simplify()"""
         return [self.solve(x) for x in combinations(letter)]
 
-    def simplify(self):
-        return Expression([self]).simplify()
+    def matches(self, pattern: Union[type, Token]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, tuple):
+            return any(self.matches(option) for option in pattern)
+        if isinstance(pattern, str):
+            return pattern == self.identifier
+        if isinstance(pattern, type):
+            return issubclass(Atom, pattern)
+        return isinstance(pattern, Atom) and pattern.identifier == self.identifier
 
 
 class Literal(Token):
     """Literal token - literal value (0 or 1)."""
 
+    complexity: int = 0
     type = "literal"
 
     def __init__(self, value: Value):
         self.value = value
         self.identifier = str(cut_literal(value))
-    
+
     def solve(self, context: Dict[str, Value], *args, **kwargs) -> "Literal":
         return self
 
@@ -185,13 +205,21 @@ class Literal(Token):
         """Helper method for .simplify()"""
         return [self, self]
 
-    def simplify(self):
-        return self
+    def matches(self, pattern: Union[type, Token]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, tuple):
+            return any(self.matches(option) for option in pattern)
+        if isinstance(pattern, str):
+            return pattern == self.identifier
+        if isinstance(pattern, type):
+            return issubclass(Literal, pattern)
+        return isinstance(pattern, Literal) and pattern.value == self.value
 
 
 class Operator(Token):
     """Operator token - defines an operation. Has no value."""
 
+    complexity: int = 1
     type = "op"
 
     operators = {
@@ -224,11 +252,21 @@ class Operator(Token):
         return self.priorities.get(self.identifier, 3)
 
     def func(self, *args) -> Token:
-        """Returns a token """
+        """Returns a token"""
         return self.operators[self.identifier](*args)
 
     def copy(self):
         return Operator(self.identifier)
+
+    def matches(self, pattern: Union[type, Token]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, tuple):
+            return any(self.matches(option) for option in pattern)
+        if isinstance(pattern, str):
+            return pattern == self.identifier
+        if isinstance(pattern, type):
+            return issubclass(Operator, pattern)
+        return isinstance(pattern, Operator) and pattern.identifier == self.identifier
 
 
 class Expression(Token):
@@ -284,6 +322,10 @@ class Expression(Token):
                 )
         return result
 
+    def is_negated(self) -> bool:
+        """Helper method for simplification. Returns True iff expression matches '~X' pattern, where X is any token"""
+        return len(self.tokens) == 2 and self.tokens[0].identifier == "~"
+
     def solve(
         self,
         context: Optional[Dict[str, Value]] = None,
@@ -318,7 +360,7 @@ class Expression(Token):
         indices = range(len(result))
 
         if len(result) == 1:
-            return Expression(result).unwrap(full_unwrap)
+            return result[0].solve(context, full_unwrap=full_unwrap)
 
         is_unary = len(result) == 2
 
@@ -327,7 +369,7 @@ class Expression(Token):
                 result[index] = result[index].solve(context, full_unwrap=True)
             else:
                 result[index] = result[index].solve(context)
-        
+
         op_index = 1 - is_unary
 
         result = result[op_index].func(*result[op_index - 1 :: 2])
@@ -340,7 +382,7 @@ class Expression(Token):
     def identifier(self) -> str:
         """Expression identifier (expression string)"""
 
-        contents = " ".join(map(str, self.tokens))
+        contents = " ".join(map(str, self.tokens)).replace("~ ", "~")
         if not self.explicit:
             return contents
         return f"({contents})"
@@ -363,9 +405,10 @@ class Expression(Token):
             return self.tokens[0]
         return self
 
-    def __eq__(self, other: Token) -> Literal:
+    def equals(self, other: Token) -> bool:
+        """Checks expression equality for every possible input."""
         if self.same(other):
-            return Token.TRUE
+            return True
         if other.type != "expr":
             other = Expression([other])
 
@@ -375,21 +418,13 @@ class Expression(Token):
             self_res = self.solve(dataset).unwrap(full_unwrap=True)
             other_res = other.solve(dataset).unwrap(full_unwrap=True)
             if self.solve(dataset).identifier != other.solve(dataset).identifier:
-                return Token.FALSE
-        return Token.TRUE
+                return False
+        return True
 
     @staticmethod
     def datasets(letters):
         for dataset in combinations(letters):
             yield dataset
-
-    def equals(self, other: Token) -> bool:
-        """
-        Returns True if two Expression objects are equal.
-        Note this is not the same as `self == other`: This function returns a boolean value, while == returns a Literal
-
-        """
-        return (self == other).value
 
     def atoms(self) -> Set[str]:
         """Returns a set of letters representing expression atoms"""
@@ -451,62 +486,158 @@ class Expression(Token):
         return Table(
             {"identifiers": [*sorted(self.atoms()), identifier], "values": result}
         )
+
     def simplify_with(self, letter: str) -> List[Token]:
         """Helper method for .simplify()"""
-        return [self.solve(x) for x in combinations(letter)]
+        return [self.solve(**{letter: x}).simplify() for x in range(2)]
 
-    def simplify(self) -> "Expression":
+    @property
+    def complexity(self) -> int:
+        """
+        Calculates complexity of the expression by a simple set of rules:
+
+            Complexity of an expression is a sum of each token complexity
+            Literal complexity is 0
+            Atom complexity is 1
+            Operator complexity is 1
+
+        Examples:
+
+            0 - complexity is 0
+            0 | 1 - complexity is 1
+            A | B - complexity is 3
+            ~(A | B) & (B & C) - complexity is 8
+
+        """
+        return sum(token.complexity for token in self.tokens)
+
+    def simplify(self) -> "Token":
         """
         Brand new method, simplifies expression with two approaches:
         1. For every letter, solves expression with 0 and 1 as letter's value, and:
-            - if any result equals self, returns that result, simplified (with .simplify())
-            - if both results are equal, returns the shortest of them, simplified
-            - if results are inversed (one is the opposite of the other), returns `(letter ^ second_result.simplify()).solve({})`
-        2. Checks if any token of expression equals to self, returns that token, simplified and solved if True
+            - if results are equal, returns the simplest of them, simplified
+            - if results are inversed (one is the opposite of the other), returns `(letter ^ zero.simplify()).solve({})`
         """
-        tokens = self.tokens[:]
-        for i, token in enumerate(tokens):
-            if isinstance(token, Expression):
-                tokens[i] = tokens[i].simplify()
+        self = self.solve({})
 
-        if len(self) < 3:
+        # literals and unary expressions
+        if self.complexity < 3:
+            return self
+
+        for i, token in enumerate(self.tokens):
+            if isinstance(token, Expression):
+                self.tokens[i] = self.tokens[i].simplify()
+
+        # literals, simple unary expressions, simple binary expressions
+        if self.complexity < 4:
             return self
 
         for letter in self.atoms():
             # simplified with 0 and 1 instead of letter value
             zero, one = self.simplify_with(letter)
             exprs = [zero, one]
-            print("a", self, zero, one, letter)
 
-            min_index = lambda *exprs: min(
-                range(len(exprs)), key=lambda x: len(exprs[x])
-            )
-
-            if self.equals(zero):
-                if min_index(self, zero):
-                    return zero.simplify().solve({})
-                return self
-
-            if self.equals(one):
-                if min_index(self, one):
-                    return one.simplify().solve({})
-                return self
-
+            # in case letter doesn't have any effect on expression
             if Expression([zero]).equals(one):
-                return exprs[min_index(*exprs)].simplify().solve({})
+                return min([zero, one], key=lambda x: x.complexity)
 
+            # case:
+            # if some letter X turns to 0, expression turns to ~Y
+            # if some letter X turns to 1, expression turns to Y
+            # therefore, expression can be written as X == Y
             if Expression([-zero]).equals(one):
-                return Expression([Atom(letter), Operator("^"), one.simplify()]).solve(
-                    {}
+                if one.complexity > zero.complexity:
+                    result = Expression([Atom(letter), Operator("^"), zero])
+                else:
+                    result = Expression([Atom(letter), Operator("=="), one])
+                if result.complexity < self.complexity:
+                    return result.simplify()
+
+        while len(self.tokens) == 1:
+            self = self.tokens[0]
+
+        # (X op Y)
+        if len(self.tokens) == 3:
+            if self.matches([["~", Token], Operator, ["~", Token]]):
+                # (~X == ~Y) <=> (X == Y) and (~X ^ ~Y) <=> (X ^ Y). Negation can be just removed
+                if self.tokens[1].matches(("^", "==")):
+                    return Expression(
+                        [
+                            self.tokens[0].tokens[1],
+                            self.tokens[1],
+                            self.tokens[2].tokens[1],
+                        ]
+                    ).simplify()
+
+                # (~X & ~Y) <=> ~(X | Y) and vice versa
+                if self.tokens[1].matches(("&", "|")):
+                    return Expression(
+                        [
+                            Operator("~"),
+                            Expression(
+                                [
+                                    self.tokens[0].tokens[1],
+                                    Operator(["&", "|"][self.tokens[1].matches("&")]),
+                                    self.tokens[2].tokens[1],
+                                ]
+                            ),
+                        ]
+                    ).simplify()
+
+                # (~X -> ~Y) <=> (X <- Y) and vice versa
+                if self.tokens[1].matches(("->", "<-")):
+                    return Expression(
+                        [
+                            self.tokens[0].tokens[1],
+                            Operator(["->", "<-"][self.tokens[1].matches("->")]),
+                            self.tokens[2].tokens[1],
+                        ]
+                    ).simplify()
+
+            # (~X -> Y) <=> (X | Y)
+            if self.matches([["~", Token], "->", Token]):
+                return Expression(
+                    [self.tokens[0].tokens[1], Operator("|"), self.tokens[2]]
                 )
 
-        is_unary = len(self.tokens) == 2
+            # (X <- ~Y) <=> (X | Y)
 
-        for index in range(is_unary, len(self.tokens), 2):
-            if self.equals(self.tokens[index]):
-                return self.tokens[index].simplify().solve()
+            if self.matches([Token, "<-", ["~", Token]]):
+                return Expression(
+                    [self.tokens[0], Operator("|"), self.tokens[2].tokens[1]]
+                )
+            for i in [0, 2]:
+                if self.equals(self.tokens[i]):
+                    return self.tokens[i].simplify()
 
-        return self.solve({})
+                # (X ^ ~Y) <=> (X == Y)
+                # (~X ^ Y) <=> (X == Y)
+                # (X == ~Y) <=> (X ^ Y)
+                # (~X == Y) <=> (X ^ Y)
+                if self.matches([["~", Token], ("^", "=="), Token][:: (-1) ** i]):
+                    return Expression(
+                        [
+                            self.tokens[2 - i],
+                            Operator(["^", "=="][self.tokens[1].identifier == "^"]),
+                            self.tokens[i].tokens[1],
+                        ]
+                    ).simplify()
+        return self
+
+    def matches(self, pattern: Union[type, "Token"]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, tuple):
+            return any(self.matches(option) for option in pattern)
+        if isinstance(pattern, str):
+            return pattern == self.identifier
+        if isinstance(pattern, type):
+            return issubclass(Expression, pattern)
+        if isinstance(pattern, list):
+            return all(
+                self.tokens[i].matches(subpattern)
+                for i, subpattern in enumerate(pattern)
+            )
+        return False
 
     def __len__(self):
         return sum(map(len, self.tokens))
