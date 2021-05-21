@@ -548,7 +548,7 @@ class Expression(Token):
             if Expression([-zero]).equals(one):
                 result = Expression([Atom(letter), Operator("=="), one])
                 if result.complexity < self.complexity:
-                    return result
+                    return result.simplify()
 
         while len(self.tokens) == 1:
             self = self.tokens[0]
