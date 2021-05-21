@@ -144,6 +144,12 @@ class Token:
     def simplify(self) -> "Token":
         return self
 
+    def matches(self, pattern: Union[type, "Token"]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, type):
+            return issubclass(Token, pattern)
+        return False
+
 
 class Atom(Token):
     """Atom token - variable value represented by one letter."""
@@ -168,6 +174,12 @@ class Atom(Token):
         """Helper method for .simplify()"""
         return [self.solve(x) for x in combinations(letter)]
 
+    def matches(self, pattern: Union[type, Token]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, type):
+            return issubclass(Atom, pattern)
+        return isinstance(pattern, Atom) and pattern.identifier == self.identifier
+
 
 class Literal(Token):
     """Literal token - literal value (0 or 1)."""
@@ -188,6 +200,12 @@ class Literal(Token):
     def simplify_with(self, letter: str) -> List[Token]:
         """Helper method for .simplify()"""
         return [self, self]
+
+    def matches(self, pattern: Union[type, Token]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, type):
+            return issubclass(Literal, pattern)
+        return isinstance(pattern, Literal) and pattern.value == self.value
 
 
 class Operator(Token):
@@ -231,6 +249,12 @@ class Operator(Token):
 
     def copy(self):
         return Operator(self.identifier)
+
+    def matches(self, pattern: Union[type, Token]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, type):
+            return issubclass(Operator, pattern)
+        return isinstance(pattern, Operator) and pattern.identifier == self.identifier
 
 
 class Expression(Token):
@@ -529,7 +553,7 @@ class Expression(Token):
                             self.tokens[2].tokens[1],
                         ]
                     ).simplify()
-                
+
                 # (~X & ~Y) <=> ~(X | Y) and vice versa
                 if self.tokens[1].identifier in ["&", "|"]:
                     return Expression(
@@ -589,6 +613,14 @@ class Expression(Token):
                         ]
                     ).simplify()
         return self
+
+    def matches(self, pattern: Union[type, "Token"]) -> bool:
+        """Custom pattern matching method"""
+        if isinstance(pattern, type):
+            return issubclass(Expression, pattern)
+        if isinstance(pattern, (list, tuple)):
+            return all(self.tokens[i].matches(subpattern) for i, subpattern in enumerate(pattern))
+        return False
 
     def __len__(self):
         return sum(map(len, self.tokens))
