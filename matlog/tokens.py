@@ -629,7 +629,7 @@ class Expression(Token):
             return pattern == self.identifier
         if isinstance(pattern, type):
             return issubclass(Expression, pattern)
-        if isinstance(pattern, (list, tuple)):
+        if isinstance(pattern, list):
             return all(
                 self.tokens[i].matches(subpattern)
                 for i, subpattern in enumerate(pattern)
