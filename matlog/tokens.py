@@ -8,7 +8,7 @@ Value = Union[bool, int]
 class Token:
     """Base class for tokens. Has no value and cannot be used in expression directly (would raise an error at some point)"""
 
-    complexity = 0
+    complexity: int = 0
     type = "unknown"
     identifier = "None"
 
@@ -148,7 +148,7 @@ class Token:
 class Atom(Token):
     """Atom token - variable value represented by one letter."""
 
-    complexity = 1
+    complexity: int = 1
     type = "atom"
 
     def __init__(self, identifier: str):
@@ -172,7 +172,7 @@ class Atom(Token):
 class Literal(Token):
     """Literal token - literal value (0 or 1)."""
 
-    complexity = 0
+    complexity: int = 0
     type = "literal"
 
     def __init__(self, value: Value):
@@ -193,7 +193,7 @@ class Literal(Token):
 class Operator(Token):
     """Operator token - defines an operation. Has no value."""
 
-    complexity = 1
+    complexity: int = 1
     type = "op"
 
     operators = {
@@ -286,7 +286,8 @@ class Expression(Token):
                 )
         return result
 
-    def is_negated(self):
+    def is_negated(self) -> bool:
+        """Helper method for simplification. Returns True iff expression matches '~X' pattern, where X is any token"""
         return len(self.tokens) == 2 and self.tokens[0].identifier == "~"
 
     def solve(
@@ -369,6 +370,7 @@ class Expression(Token):
         return self
 
     def equals(self, other: Token) -> bool:
+        """Checks expression equality for every possible input."""
         if self.same(other):
             return True
         if other.type != "expr":
@@ -454,7 +456,7 @@ class Expression(Token):
         return [self.solve(**{letter: x}).simplify() for x in range(2)]
 
     @property
-    def complexity(self):
+    def complexity(self) -> int:
         """
         Calculates complexity of the expression by a simple set of rules:
 
@@ -471,7 +473,6 @@ class Expression(Token):
             ~(A | B) & (B & C) - complexity is 8
 
         """
-
         return sum(token.complexity for token in self.tokens)
 
     def simplify(self) -> "Token":
@@ -545,6 +546,14 @@ class Expression(Token):
                             self.tokens[2].tokens[1],
                         ]
                     ).simplify()
+            if self.tokens[0].is_negated() and self.tokens[1].identifier == "->":
+                return Expression(
+                    [self.tokens[0].tokens[1], Operator("|"), self.tokens[2]]
+                )
+            if self.tokens[2].is_negated() and self.tokens[1].identifier == "<-":
+                return Expression(
+                    [self.tokens[0], Operator("|"), self.tokens[2].tokens[1]]
+                )
             for i in [0, 2]:
                 if self.equals(self.tokens[i]):
                     return self.tokens[i].simplify()
